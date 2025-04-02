@@ -248,7 +248,7 @@ class Profile(models.Model):
 		
 		# Sort checks: those with the most total downtime come first
             def total_downtime(check):
-                return sum(d["down_duration"] for d in getattr(check, "past_downtimes", []))
+                return sum(d.duration.total_seconds() for d in getattr(check, "past_downtimes", []))
             checks.sort(key=total_downtime, reverse=True)
 	
 

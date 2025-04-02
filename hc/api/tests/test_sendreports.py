@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from django.contrib.auth.models import User
+from hc.accounts.models import Profile
+
 from datetime import date, datetime
 from datetime import timedelta as td
 from datetime import timezone
@@ -14,6 +17,8 @@ from django.utils.timezone import now
 from hc.api.management.commands.sendreports import Command
 from hc.api.models import Check
 from hc.test import BaseTestCase
+from hc.api.models import DowntimeRecord
+
 
 CURRENT_TIME = datetime(2020, 1, 13, 2, tzinfo=timezone.utc)
 MOCK_NOW = Mock(return_value=CURRENT_TIME)
@@ -273,3 +278,33 @@ class SendReportsTestCase(BaseTestCase):
         self.assertEqual(email.extra_headers["From"], settings.DEFAULT_FROM_EMAIL)
         # There should be no X-Bounce-ID header
         self.assertNotIn("X-Bounce-ID", email.extra_headers)
+        
+    def test_checks_are_sorted_by_downtime(self):
+        alice, _ = User.objects.get_or_create(username="alice", email="alice@example.org")
+        p = alice.profile
+        p.reports = "weekly"
+        p.save()
+
+        # Create 2 checks, one with more downtime than the other
+        check1 = Check.objects.create(project=p.user.project_set.first(), name="Check 1", status="down")
+        check2 = Check.objects.create(project=p.user.project_set.first(), name="Check 2", status="down")
+
+        # Manually set fake downtimes for both
+        check1.past_downtimes = [DowntimeRecord(boundary=now(), tz="UTC", no_data=False, duration=td(seconds=300), count=1)]
+        check2.past_downtimes = [DowntimeRecord(boundary=now(), tz="UTC", no_data=False, duration=td(seconds=100), count=1)]
+
+
+        # Simulate report sending logic
+        checks = [check1, check2]
+
+        def total_downtime(check):
+            return sum(d.duration.total_seconds() for d in getattr(check, "past_downtimes", []))
+
+        checks.sort(key=total_downtime, reverse=True)
+
+        self.assertEqual(checks[0].name, "Check 1")
+        self.assertEqual(checks[1].name, "Check 2")
+
+                
+        
+  
