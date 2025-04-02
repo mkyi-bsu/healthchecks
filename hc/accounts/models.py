@@ -245,6 +245,12 @@ class Profile(models.Model):
                 # but the template will need them in ascending order:
                 downtimes.reverse()
                 setattr(check, "past_downtimes", downtimes[:-1])
+		
+		# Sort checks: those with the most total downtime come first
+            def total_downtime(check):
+                return sum(d["down_duration"] for d in getattr(check, "past_downtimes", []))
+            checks.sort(key=total_downtime, reverse=True)
+	
 
             # boundaries are in descending order, but the template
             # will need them in ascending order:

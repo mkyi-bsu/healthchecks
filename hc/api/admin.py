@@ -296,7 +296,7 @@ class NotificationsAdmin(ModelAdmin[Notification]):
     list_display = (
         "id",
         "created",
-        "channel__kind",
+        "get_channel_kind",
         "check_status",
         "project",
         "channel_value",
@@ -312,6 +312,11 @@ class NotificationsAdmin(ModelAdmin[Notification]):
         url = reverse("hc-channels", args=[obj.channel.project.code])
         name = obj.channel.project
         return format_html("""<div><a href="{}">{}</a></div>""", url, name)
+
+    def get_channel_kind(self, obj: Notification) -> str:
+        return obj.channel.kind if obj.channel else "N/A"
+    get_channel_kind.short_description = "Channel Kind"
+
 
 
 @admin.register(Flip)
